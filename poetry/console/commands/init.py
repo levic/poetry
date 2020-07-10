@@ -434,10 +434,16 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
 
                     result.append(pair)
                     continue
-            elif (os.path.sep in requirement or "/" in requirement) and cwd.joinpath(
-                requirement
-            ).exists():
-                path = cwd.joinpath(requirement)
+            elif (os.path.sep in requirement or "/" in requirement) and (
+                cwd.joinpath(requirement).exists()
+                or Path(requirement).expanduser().exists()
+                and Path(requirement).expanduser().is_absolute()
+            ):
+                path = Path(requirement).expanduser()
+
+                if not path.is_absolute():
+                    path = cwd.joinpath(requirement)
+
                 if path.is_file():
                     package = Provider.get_package_from_file(path.resolve())
                 else:
@@ -447,7 +453,12 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
                     dict(
                         [
                             ("name", package.name),
-                            ("path", path.relative_to(cwd).as_posix()),
+                            (
+                                "path",
+                                path.relative_to(cwd).as_posix()
+                                if not path.is_absolute()
+                                else path.as_posix(),
+                            ),
                         ]
                         + ([("extras", extras)] if extras else [])
                     )

@@ -100,10 +100,12 @@ class InstalledRepository(Repository):
             return True
 
     @classmethod
-    def load(cls, env: Env) -> "InstalledRepository":
+    def load(cls, env: Env, with_dependencies: bool = False) -> "InstalledRepository":
         """
         Load installed packages.
         """
+        from poetry.core.packages import dependency_from_pep_508
+
         repo = cls()
         seen = set()
 
@@ -117,6 +119,11 @@ class InstalledRepository(Repository):
                 version = distribution.metadata["version"]
                 package = Package(name, version, version)
                 package.description = distribution.metadata.get("summary", "")
+
+                if with_dependencies:
+                    for require in distribution.metadata.get_all("requires-dist", []):
+                        dep = dependency_from_pep_508(require)
+                        package.add_dependency(dep)
 
                 if package.name in seen:
                     continue
